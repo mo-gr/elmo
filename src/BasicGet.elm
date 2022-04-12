@@ -1,6 +1,6 @@
 module BasicGet exposing (..)
 
-import Browser exposing (element)
+import Browser
 import Html exposing (Html, button, div, img, text)
 import Html.Attributes exposing (src, style)
 import Html.Events exposing (onClick)
@@ -19,6 +19,7 @@ type Msg
     | Fetch
 
 
+main : Program () Model Msg
 main =
     Browser.element
         { init = init
@@ -44,7 +45,7 @@ catDecoder =
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+update msg _ =
     case msg of
         Fetch ->
             ( Loading
