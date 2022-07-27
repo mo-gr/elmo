@@ -9,8 +9,12 @@ import Html.Events exposing (onClick)
 import Json.Decode as Decode
 
 
+type alias PlayField =
+    Dict ( Int, Int ) Player
+
+
 type alias Model =
-    { field : Dict ( Int, Int ) Player
+    { field : PlayField
     , nextPlayer : Player
     }
 
@@ -86,12 +90,11 @@ subscriptions _ =
 
 toKeyMsg : String -> Msg
 toKeyMsg string =
-    case string of
-        "r" ->
-            Reset
+    if string == "r" then
+        Reset
 
-        _ ->
-            NoOp
+    else
+        NoOp
 
 
 init : flags -> ( Model, Cmd Msg )
@@ -99,7 +102,7 @@ init _ =
     ( { field = Dict.empty, nextPlayer = X }, Cmd.none )
 
 
-allSame : Dict ( Int, Int ) Player -> List ( Int, Int ) -> Bool
+allSame : PlayField -> List ( Int, Int ) -> Bool
 allSame field coords =
     List.all (\c -> Dict.get c field == Just X) coords
         || List.all (\c -> Dict.get c field == Just O) coords
@@ -206,6 +209,22 @@ block model row col =
         ]
 
 
+bottomLabel : Model -> String
+bottomLabel model =
+    case ( hasWinner model, model.nextPlayer ) of
+        ( True, X ) ->
+            "Winner is O! Press 'R' to reset."
+
+        ( True, O ) ->
+            "Winner is X! Press 'R' to reset."
+
+        ( False, X ) ->
+            "Next move: X"
+
+        ( False, O ) ->
+            "Next move: O"
+
+
 view : Model -> Html.Html Msg
 view model =
     div []
@@ -226,19 +245,5 @@ view model =
             [ style "textAlign" "center"
             , style "width" "300px"
             ]
-            [ text
-                (case ( hasWinner model, model.nextPlayer ) of
-                    ( True, X ) ->
-                        "Winner is O! Press 'R' to reset."
-
-                    ( True, O ) ->
-                        "Winner is X! Press 'R' to reset."
-
-                    ( False, X ) ->
-                        "Next move: X"
-
-                    ( False, O ) ->
-                        "Next move: O"
-                )
-            ]
+            [ bottomLabel model |> text ]
         ]
