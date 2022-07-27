@@ -41,7 +41,7 @@ noSubscriptions _ =
 
 catDecoder : Decoder String
 catDecoder =
-    index 0 (field "url" string)
+    index 0 <| field "url" string
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
