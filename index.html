@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Main</title>
+  <title>Boid</title>
   <style>body { padding: 0; margin: 0; }</style>
 </head>
 
@@ -5157,35 +5157,510 @@ var $elm$core$Task$perform = F2(
 			$elm$core$Task$Perform(
 				A2($elm$core$Task$map, toMessage, task)));
 	});
-var $elm$core$Platform$Cmd$batch = _Platform_batch;
-var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
-var $elm$core$Platform$Sub$batch = _Platform_batch;
-var $elm$core$Platform$Sub$none = $elm$core$Platform$Sub$batch(_List_Nil);
-var $elm$browser$Browser$sandbox = function (impl) {
-	return _Browser_element(
+var $elm$browser$Browser$element = _Browser_element;
+var $author$project$Boid$SpawnBoid = function (a) {
+	return {$: 'SpawnBoid', a: a};
+};
+var $author$project$Boid$Boid = function (a) {
+	return {$: 'Boid', a: a};
+};
+var $elm$core$Basics$negate = function (n) {
+	return -n;
+};
+var $author$project$Boid$makeBoidV2 = function (pos0) {
+	return $author$project$Boid$Boid(
 		{
-			init: function (_v0) {
-				return _Utils_Tuple2(impl.init, $elm$core$Platform$Cmd$none);
-			},
-			subscriptions: function (_v1) {
-				return $elm$core$Platform$Sub$none;
-			},
-			update: F2(
-				function (msg, model) {
-					return _Utils_Tuple2(
-						A2(impl.update, msg, model),
-						$elm$core$Platform$Cmd$none);
-				}),
-			view: impl.view
+			force: {x: -0.001, y: -0.001},
+			pos: pos0,
+			velocity: {x: 1, y: 1}
 		});
 };
-var $author$project$Main$update = F2(
-	function (_v0, n) {
-		return n + 1;
+var $author$project$Boid$makeBoid = $author$project$Boid$makeBoidV2(
+	{x: 0, y: 0});
+var $elm$core$Basics$sqrt = _Basics_sqrt;
+var $author$project$Boid$vlength = function (_v0) {
+	var x = _v0.x;
+	var y = _v0.y;
+	return $elm$core$Basics$sqrt((x * x) + (y * y));
+};
+var $author$project$Boid$vadd = F2(
+	function (v1, v2) {
+		return {x: v1.x + v2.x, y: v1.y + v2.y};
 	});
-var $author$project$Main$Increment = {$: 'Increment'};
-var $elm$html$Html$button = _VirtualDom_node('button');
+var $author$project$Boid$vscale = F2(
+	function (n, v) {
+		return {x: v.x * n, y: v.y * n};
+	});
+var $author$project$Boid$vsub = F2(
+	function (v1, v2) {
+		return A2(
+			$author$project$Boid$vadd,
+			v2,
+			A2($author$project$Boid$vscale, -1, v1));
+	});
+var $author$project$Boid$distance = F2(
+	function (_v0, _v1) {
+		var b1 = _v0.a;
+		var b2 = _v1.a;
+		return $author$project$Boid$vlength(
+			A2($author$project$Boid$vsub, b1.pos, b2.pos));
+	});
+var $elm$core$List$filter = F2(
+	function (isGood, list) {
+		return A3(
+			$elm$core$List$foldr,
+			F2(
+				function (x, xs) {
+					return isGood(x) ? A2($elm$core$List$cons, x, xs) : xs;
+				}),
+			_List_Nil,
+			list);
+	});
+var $elm$core$List$isEmpty = function (xs) {
+	if (!xs.b) {
+		return true;
+	} else {
+		return false;
+	}
+};
+var $author$project$Boid$alignWithFlock = F2(
+	function (neighbours, _v0) {
+		var boid = _v0.a;
+		if ($elm$core$List$isEmpty(neighbours)) {
+			return $author$project$Boid$Boid(boid);
+		} else {
+			var visibleNeighbours = A2(
+				$elm$core$List$filter,
+				function (other) {
+					return A2(
+						$author$project$Boid$distance,
+						$author$project$Boid$Boid(boid),
+						other) < 50;
+				},
+				neighbours);
+			return $elm$core$List$isEmpty(visibleNeighbours) ? $author$project$Boid$Boid(boid) : function (commonVelocity) {
+				return $author$project$Boid$Boid(
+					_Utils_update(
+						boid,
+						{
+							velocity: A2($author$project$Boid$vadd, commonVelocity, boid.velocity)
+						}));
+			}(
+				A2(
+					$author$project$Boid$vscale,
+					1 / 8,
+					A2(
+						$author$project$Boid$vscale,
+						1 / $elm$core$List$length(visibleNeighbours),
+						A3(
+							$elm$core$List$foldr,
+							F2(
+								function (_v1, commonV) {
+									var other = _v1.a;
+									return A2(
+										$author$project$Boid$vadd,
+										commonV,
+										A2($author$project$Boid$vadd, boid.velocity, other.velocity));
+								}),
+							{x: 0, y: 0},
+							visibleNeighbours))));
+		}
+	});
+var $author$project$Boid$clampForce = F2(
+	function (limit, _v0) {
+		clampForce:
+		while (true) {
+			var boid = _v0.a;
+			if (_Utils_cmp(
+				$author$project$Boid$vlength(boid.force),
+				limit) > 0) {
+				var $temp$limit = limit,
+					$temp$_v0 = $author$project$Boid$Boid(
+					_Utils_update(
+						boid,
+						{
+							force: A2($author$project$Boid$vscale, 0.5, boid.force)
+						}));
+				limit = $temp$limit;
+				_v0 = $temp$_v0;
+				continue clampForce;
+			} else {
+				return $author$project$Boid$Boid(boid);
+			}
+		}
+	});
+var $author$project$Boid$clampVelocity = F2(
+	function (limit, _v0) {
+		clampVelocity:
+		while (true) {
+			var boid = _v0.a;
+			if (_Utils_cmp(
+				$author$project$Boid$vlength(boid.velocity),
+				limit) > 0) {
+				var $temp$limit = limit,
+					$temp$_v0 = $author$project$Boid$Boid(
+					_Utils_update(
+						boid,
+						{
+							velocity: A2($author$project$Boid$vscale, 0.5, boid.velocity)
+						}));
+				limit = $temp$limit;
+				_v0 = $temp$_v0;
+				continue clampVelocity;
+			} else {
+				return $author$project$Boid$Boid(boid);
+			}
+		}
+	});
+var $author$project$Boid$pos = function (_v0) {
+	var b = _v0.a;
+	return b.pos;
+};
+var $author$project$Boid$flyToNeighbours = F2(
+	function (neighbours, _v0) {
+		var boid = _v0.a;
+		if ($elm$core$List$isEmpty(neighbours)) {
+			return $author$project$Boid$Boid(boid);
+		} else {
+			var neighbourDraw = A2(
+				$author$project$Boid$vscale,
+				1 / 100,
+				A2(
+					$author$project$Boid$vadd,
+					A2($author$project$Boid$vscale, -1, boid.pos),
+					A2(
+						$author$project$Boid$vscale,
+						1 / $elm$core$List$length(neighbours),
+						A3(
+							$elm$core$List$foldr,
+							$author$project$Boid$vadd,
+							{x: 0, y: 0},
+							A2($elm$core$List$map, $author$project$Boid$pos, neighbours)))));
+			return $author$project$Boid$Boid(
+				_Utils_update(
+					boid,
+					{
+						force: A2($author$project$Boid$vadd, boid.force, neighbourDraw)
+					}));
+		}
+	});
+var $author$project$Boid$keepDistance = F2(
+	function (neighbours, _v0) {
+		var boid = _v0.a;
+		return $elm$core$List$isEmpty(neighbours) ? $author$project$Boid$Boid(boid) : function (avoidanceForce) {
+			return $author$project$Boid$Boid(
+				_Utils_update(
+					boid,
+					{
+						force: A2($author$project$Boid$vadd, boid.force, avoidanceForce)
+					}));
+		}(
+			A2(
+				$author$project$Boid$vscale,
+				1 / 8,
+				A3(
+					$elm$core$List$foldr,
+					F2(
+						function (_v1, avoid) {
+							var other = _v1.a;
+							return A2(
+								$author$project$Boid$vsub,
+								avoid,
+								A2($author$project$Boid$vsub, boid.pos, other.pos));
+						}),
+					{x: 0, y: 0},
+					A2(
+						$elm$core$List$filter,
+						function (other) {
+							return A2(
+								$author$project$Boid$distance,
+								$author$project$Boid$Boid(boid),
+								other) < 15;
+						},
+						neighbours))));
+	});
+var $elm$core$List$partition = F2(
+	function (pred, list) {
+		var step = F2(
+			function (x, _v0) {
+				var trues = _v0.a;
+				var falses = _v0.b;
+				return pred(x) ? _Utils_Tuple2(
+					A2($elm$core$List$cons, x, trues),
+					falses) : _Utils_Tuple2(
+					trues,
+					A2($elm$core$List$cons, x, falses));
+			});
+		return A3(
+			$elm$core$List$foldr,
+			step,
+			_Utils_Tuple2(_List_Nil, _List_Nil),
+			list);
+	});
+var $author$project$Boid$resetForce = function (_v0) {
+	var boid = _v0.a;
+	return $author$project$Boid$Boid(
+		_Utils_update(
+			boid,
+			{
+				force: {x: 0, y: 0}
+			}));
+};
+var $author$project$Boid$calculateForces = F2(
+	function (bs, b) {
+		var _v0 = A2(
+			$elm$core$List$partition,
+			function (boid) {
+				return _Utils_eq(b, boid);
+			},
+			bs);
+		var others = _v0.b;
+		return A2(
+			$author$project$Boid$clampVelocity,
+			5,
+			A2(
+				$author$project$Boid$clampForce,
+				1,
+				A2(
+					$author$project$Boid$alignWithFlock,
+					others,
+					A2(
+						$author$project$Boid$keepDistance,
+						others,
+						A2(
+							$author$project$Boid$flyToNeighbours,
+							others,
+							$author$project$Boid$resetForce(b))))));
+	});
+var $elm$core$Basics$composeR = F3(
+	function (f, g, x) {
+		return g(
+			f(x));
+	});
+var $elm$core$Platform$Cmd$batch = _Platform_batch;
+var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
+var $author$project$Boid$updateBoid = function (_v0) {
+	var b = _v0.a;
+	return $author$project$Boid$Boid(
+		_Utils_update(
+			b,
+			{
+				pos: A2($author$project$Boid$vadd, b.pos, b.velocity),
+				velocity: A2(
+					$author$project$Boid$vscale,
+					0.99,
+					A2($author$project$Boid$vadd, b.velocity, b.force))
+			}));
+};
+var $author$project$Boid$update = F2(
+	function (msg, model) {
+		if (msg.$ === 'SpawnBoid') {
+			var b = msg.a;
+			return _Utils_Tuple2(
+				_Utils_update(
+					model,
+					{
+						boids: A2($elm$core$List$cons, b, model.boids)
+					}),
+				$elm$core$Platform$Cmd$none);
+		} else {
+			return _Utils_Tuple2(
+				_Utils_update(
+					model,
+					{
+						boids: A2(
+							$elm$core$List$map,
+							A2(
+								$elm$core$Basics$composeR,
+								$author$project$Boid$calculateForces(model.boids),
+								$author$project$Boid$updateBoid),
+							model.boids)
+					}),
+				$elm$core$Platform$Cmd$none);
+		}
+	});
+var $author$project$Boid$init = function (_v0) {
+	return A2(
+		$author$project$Boid$update,
+		$author$project$Boid$SpawnBoid($author$project$Boid$makeBoid),
+		{
+			boids: _List_Nil,
+			world: {height: 500, width: 500}
+		});
+};
+var $author$project$Boid$AnimationFrame = function (a) {
+	return {$: 'AnimationFrame', a: a};
+};
+var $elm$browser$Browser$AnimationManager$Delta = function (a) {
+	return {$: 'Delta', a: a};
+};
+var $elm$browser$Browser$AnimationManager$State = F3(
+	function (subs, request, oldTime) {
+		return {oldTime: oldTime, request: request, subs: subs};
+	});
+var $elm$browser$Browser$AnimationManager$init = $elm$core$Task$succeed(
+	A3($elm$browser$Browser$AnimationManager$State, _List_Nil, $elm$core$Maybe$Nothing, 0));
+var $elm$core$Process$kill = _Scheduler_kill;
+var $elm$browser$Browser$AnimationManager$now = _Browser_now(_Utils_Tuple0);
+var $elm$browser$Browser$AnimationManager$rAF = _Browser_rAF(_Utils_Tuple0);
+var $elm$core$Platform$sendToSelf = _Platform_sendToSelf;
+var $elm$core$Process$spawn = _Scheduler_spawn;
+var $elm$browser$Browser$AnimationManager$onEffects = F3(
+	function (router, subs, _v0) {
+		var request = _v0.request;
+		var oldTime = _v0.oldTime;
+		var _v1 = _Utils_Tuple2(request, subs);
+		if (_v1.a.$ === 'Nothing') {
+			if (!_v1.b.b) {
+				var _v2 = _v1.a;
+				return $elm$browser$Browser$AnimationManager$init;
+			} else {
+				var _v4 = _v1.a;
+				return A2(
+					$elm$core$Task$andThen,
+					function (pid) {
+						return A2(
+							$elm$core$Task$andThen,
+							function (time) {
+								return $elm$core$Task$succeed(
+									A3(
+										$elm$browser$Browser$AnimationManager$State,
+										subs,
+										$elm$core$Maybe$Just(pid),
+										time));
+							},
+							$elm$browser$Browser$AnimationManager$now);
+					},
+					$elm$core$Process$spawn(
+						A2(
+							$elm$core$Task$andThen,
+							$elm$core$Platform$sendToSelf(router),
+							$elm$browser$Browser$AnimationManager$rAF)));
+			}
+		} else {
+			if (!_v1.b.b) {
+				var pid = _v1.a.a;
+				return A2(
+					$elm$core$Task$andThen,
+					function (_v3) {
+						return $elm$browser$Browser$AnimationManager$init;
+					},
+					$elm$core$Process$kill(pid));
+			} else {
+				return $elm$core$Task$succeed(
+					A3($elm$browser$Browser$AnimationManager$State, subs, request, oldTime));
+			}
+		}
+	});
+var $elm$time$Time$Posix = function (a) {
+	return {$: 'Posix', a: a};
+};
+var $elm$time$Time$millisToPosix = $elm$time$Time$Posix;
+var $elm$browser$Browser$AnimationManager$onSelfMsg = F3(
+	function (router, newTime, _v0) {
+		var subs = _v0.subs;
+		var oldTime = _v0.oldTime;
+		var send = function (sub) {
+			if (sub.$ === 'Time') {
+				var tagger = sub.a;
+				return A2(
+					$elm$core$Platform$sendToApp,
+					router,
+					tagger(
+						$elm$time$Time$millisToPosix(newTime)));
+			} else {
+				var tagger = sub.a;
+				return A2(
+					$elm$core$Platform$sendToApp,
+					router,
+					tagger(newTime - oldTime));
+			}
+		};
+		return A2(
+			$elm$core$Task$andThen,
+			function (pid) {
+				return A2(
+					$elm$core$Task$andThen,
+					function (_v1) {
+						return $elm$core$Task$succeed(
+							A3(
+								$elm$browser$Browser$AnimationManager$State,
+								subs,
+								$elm$core$Maybe$Just(pid),
+								newTime));
+					},
+					$elm$core$Task$sequence(
+						A2($elm$core$List$map, send, subs)));
+			},
+			$elm$core$Process$spawn(
+				A2(
+					$elm$core$Task$andThen,
+					$elm$core$Platform$sendToSelf(router),
+					$elm$browser$Browser$AnimationManager$rAF)));
+	});
+var $elm$browser$Browser$AnimationManager$Time = function (a) {
+	return {$: 'Time', a: a};
+};
+var $elm$core$Basics$composeL = F3(
+	function (g, f, x) {
+		return g(
+			f(x));
+	});
+var $elm$browser$Browser$AnimationManager$subMap = F2(
+	function (func, sub) {
+		if (sub.$ === 'Time') {
+			var tagger = sub.a;
+			return $elm$browser$Browser$AnimationManager$Time(
+				A2($elm$core$Basics$composeL, func, tagger));
+		} else {
+			var tagger = sub.a;
+			return $elm$browser$Browser$AnimationManager$Delta(
+				A2($elm$core$Basics$composeL, func, tagger));
+		}
+	});
+_Platform_effectManagers['Browser.AnimationManager'] = _Platform_createManager($elm$browser$Browser$AnimationManager$init, $elm$browser$Browser$AnimationManager$onEffects, $elm$browser$Browser$AnimationManager$onSelfMsg, 0, $elm$browser$Browser$AnimationManager$subMap);
+var $elm$browser$Browser$AnimationManager$subscription = _Platform_leaf('Browser.AnimationManager');
+var $elm$browser$Browser$AnimationManager$onAnimationFrameDelta = function (tagger) {
+	return $elm$browser$Browser$AnimationManager$subscription(
+		$elm$browser$Browser$AnimationManager$Delta(tagger));
+};
+var $elm$browser$Browser$Events$onAnimationFrameDelta = $elm$browser$Browser$AnimationManager$onAnimationFrameDelta;
+var $author$project$Boid$subscriptions = function (_v0) {
+	return $elm$browser$Browser$Events$onAnimationFrameDelta($author$project$Boid$AnimationFrame);
+};
 var $elm$html$Html$div = _VirtualDom_node('div');
+var $elm$svg$Svg$trustedNode = _VirtualDom_nodeNS('http://www.w3.org/2000/svg');
+var $elm$svg$Svg$circle = $elm$svg$Svg$trustedNode('circle');
+var $elm$svg$Svg$Attributes$cx = _VirtualDom_attribute('cx');
+var $elm$svg$Svg$Attributes$cy = _VirtualDom_attribute('cy');
+var $elm$core$Basics$modBy = _Basics_modBy;
+var $elm$svg$Svg$Attributes$r = _VirtualDom_attribute('r');
+var $elm$core$Basics$round = _Basics_round;
+var $author$project$Boid$drawBoid = function (_v0) {
+	var boid = _v0.a;
+	return A2(
+		$elm$svg$Svg$circle,
+		_List_fromArray(
+			[
+				$elm$svg$Svg$Attributes$cx(
+				$elm$core$String$fromInt(
+					A2(
+						$elm$core$Basics$modBy,
+						500,
+						$elm$core$Basics$round(boid.pos.x)))),
+				$elm$svg$Svg$Attributes$cy(
+				$elm$core$String$fromInt(
+					A2(
+						$elm$core$Basics$modBy,
+						500,
+						$elm$core$Basics$round(boid.pos.y)))),
+				$elm$svg$Svg$Attributes$r('5')
+			]),
+		_List_Nil);
+};
+var $elm$svg$Svg$Attributes$height = _VirtualDom_attribute('height');
+var $elm$json$Json$Decode$field = _Json_decodeField;
+var $elm$json$Json$Decode$float = _Json_decodeFloat;
 var $elm$virtual_dom$VirtualDom$Normal = function (a) {
 	return {$: 'Normal', a: a};
 };
@@ -5197,46 +5672,55 @@ var $elm$html$Html$Events$on = F2(
 			event,
 			$elm$virtual_dom$VirtualDom$Normal(decoder));
 	});
-var $elm$html$Html$Events$onClick = function (msg) {
+var $author$project$Boid$onClickWithCoord = function (makeMessage) {
 	return A2(
 		$elm$html$Html$Events$on,
 		'click',
-		$elm$json$Json$Decode$succeed(msg));
+		A3(
+			$elm$json$Json$Decode$map2,
+			F2(
+				function (x, y) {
+					return makeMessage(
+						{x: x, y: y});
+				}),
+			A2($elm$json$Json$Decode$field, 'offsetX', $elm$json$Json$Decode$float),
+			A2($elm$json$Json$Decode$field, 'offsetY', $elm$json$Json$Decode$float)));
 };
-var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
-var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
-var $author$project$Main$view = function (model) {
+var $elm$virtual_dom$VirtualDom$style = _VirtualDom_style;
+var $elm$html$Html$Attributes$style = $elm$virtual_dom$VirtualDom$style;
+var $elm$svg$Svg$svg = $elm$svg$Svg$trustedNode('svg');
+var $elm$svg$Svg$Attributes$width = _VirtualDom_attribute('width');
+var $author$project$Boid$view = function (model) {
 	return A2(
 		$elm$html$Html$div,
-		_List_Nil,
+		_List_fromArray(
+			[
+				A2($elm$html$Html$Attributes$style, 'display', 'flex'),
+				A2($elm$html$Html$Attributes$style, 'justify-content', 'center'),
+				A2($elm$html$Html$Attributes$style, 'align-items', 'center')
+			]),
 		_List_fromArray(
 			[
 				A2(
-				$elm$html$Html$div,
-				_List_Nil,
+				$elm$svg$Svg$svg,
 				_List_fromArray(
 					[
-						$elm$html$Html$text(
-						$elm$core$String$fromInt(model))
-					])),
-				A2(
-				$elm$html$Html$button,
-				_List_fromArray(
-					[
-						$elm$html$Html$Events$onClick($author$project$Main$Increment)
+						$elm$svg$Svg$Attributes$width(
+						$elm$core$String$fromInt(model.world.width)),
+						$elm$svg$Svg$Attributes$height(
+						$elm$core$String$fromInt(model.world.height)),
+						$author$project$Boid$onClickWithCoord(
+						A2($elm$core$Basics$composeR, $author$project$Boid$makeBoidV2, $author$project$Boid$SpawnBoid))
 					]),
-				_List_fromArray(
-					[
-						$elm$html$Html$text('+')
-					]))
+				A2($elm$core$List$map, $author$project$Boid$drawBoid, model.boids))
 			]));
 };
-var $author$project$Main$main = $elm$browser$Browser$sandbox(
-	{init: 0, update: $author$project$Main$update, view: $author$project$Main$view});
-_Platform_export({'Main':{'init':$author$project$Main$main(
+var $author$project$Boid$main = $elm$browser$Browser$element(
+	{init: $author$project$Boid$init, subscriptions: $author$project$Boid$subscriptions, update: $author$project$Boid$update, view: $author$project$Boid$view});
+_Platform_export({'Boid':{'init':$author$project$Boid$main(
 	$elm$json$Json$Decode$succeed(_Utils_Tuple0))(0)}});}(this));
 
-  var app = Elm.Main.init({ node: document.getElementById("elm") });
+  var app = Elm.Boid.init({ node: document.getElementById("elm") });
 }
 catch (e)
 {
