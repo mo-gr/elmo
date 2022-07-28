@@ -6,6 +6,7 @@ import Html exposing (Attribute)
 import Html.Attributes
 import Html.Events exposing (on)
 import Json.Decode
+import String exposing (fromInt)
 import Svg
 import Svg.Attributes
 
@@ -85,6 +86,7 @@ calculateForces bs b =
     resetForce b
         |> flyToNeighbours others
         |> keepDistance others
+        |> alignWithFlock others
         |> clampForce 1
         |> clampVelocity 5
 
@@ -136,9 +138,34 @@ keepDistance neighbours (Boid boid) =
     else
         neighbours
             |> List.filter (\other -> distance (Boid boid) other < 15)
-            |> List.foldr (\(Boid other) avoid -> vsub avoid (vsub boid.pos other.pos)) { x = 0, y = 0 }
+            |> List.foldr
+                (\(Boid other) avoid -> vsub avoid (vsub boid.pos other.pos))
+                { x = 0, y = 0 }
             |> vscale (1 / 8)
             |> (\avoidanceForce -> Boid { boid | force = vadd boid.force avoidanceForce })
+
+
+alignWithFlock : List Boid -> Boid -> Boid
+alignWithFlock neighbours (Boid boid) =
+    if List.isEmpty neighbours then
+        Boid boid
+
+    else
+        let
+            visibleNeighbours =
+                List.filter (\other -> distance (Boid boid) other < 50) neighbours
+        in
+        if List.isEmpty visibleNeighbours then
+            Boid boid
+
+        else
+            visibleNeighbours
+                |> List.foldr
+                    (\(Boid other) commonV -> vadd commonV (vadd boid.velocity other.velocity))
+                    { x = 0, y = 0 }
+                |> vscale (1 / toFloat (List.length visibleNeighbours))
+                |> vscale (1 / 8)
+                |> (\commonVelocity -> Boid { boid | velocity = vadd commonVelocity boid.velocity })
 
 
 pos : Boid -> V2
@@ -207,8 +234,8 @@ view model =
 drawBoid : Boid -> Svg.Svg Msg
 drawBoid (Boid boid) =
     Svg.circle
-        [ Svg.Attributes.cx (String.fromFloat boid.pos.x)
-        , Svg.Attributes.cy (String.fromFloat boid.pos.y)
+        [ Svg.Attributes.cx (boid.pos.x |> round |> modBy 500 |> fromInt)
+        , Svg.Attributes.cy (boid.pos.y |> round |> modBy 500 |> fromInt)
         , Svg.Attributes.r "5"
         ]
         []
