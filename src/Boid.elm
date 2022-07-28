@@ -2,9 +2,10 @@ module Boid exposing (main)
 
 import Browser
 import Browser.Events
-import Html
+import Html exposing (Attribute)
 import Html.Attributes
-import Html.Events
+import Html.Events exposing (on)
+import Json.Decode
 import Svg
 import Svg.Attributes
 
@@ -45,8 +46,13 @@ type alias V2 =
 
 makeBoid : Boid
 makeBoid =
+    makeBoidV2 { x = 0, y = 0 }
+
+
+makeBoidV2 : V2 -> Boid
+makeBoidV2 pos0 =
     Boid
-        { pos = { x = 0, y = 0 }
+        { pos = pos0
         , velocity = { x = 1, y = 1 }
         , force = { x = -0.001, y = -0.001 }
         }
@@ -84,7 +90,7 @@ calculateForces bs b =
 clampForce : Float -> Boid -> Boid
 clampForce limit (Boid boid) =
     if vlength boid.force > limit then
-        clampForce limit (Boid {boid | force = vscale 0.5 boid.force})
+        clampForce limit (Boid { boid | force = vscale 0.5 boid.force })
 
     else
         Boid boid
@@ -134,8 +140,19 @@ vscale : Float -> V2 -> V2
 vscale n v =
     { x = v.x * n, y = v.y * n }
 
+
 vlength : V2 -> Float
-vlength {x, y} = sqrt (x * x + y * y)
+vlength { x, y } =
+    sqrt (x * x + y * y)
+
+
+onClickWithCoord : (V2 -> Msg) -> Attribute Msg
+onClickWithCoord makeMessage =
+    Json.Decode.map2 (\x y -> Debug.log "msg" <| makeMessage { x = x, y = y })
+        (Json.Decode.field "offsetX" Json.Decode.float)
+        (Json.Decode.field "offsetY" Json.Decode.float)
+        |> on "click"
+
 
 view : Model -> Html.Html Msg
 view model =
@@ -143,17 +160,17 @@ view model =
         [ Html.Attributes.style "display" "flex"
         , Html.Attributes.style "justify-content" "center"
         , Html.Attributes.style "align-items" "center"
-        , Html.Events.onClick (SpawnBoid makeBoid)
         ]
         [ Svg.svg
             [ Svg.Attributes.width (String.fromInt model.world.width)
             , Svg.Attributes.height (String.fromInt model.world.height)
+            , onClickWithCoord (makeBoidV2 >> SpawnBoid)
             ]
             (List.map drawBoid model.boids)
         ]
 
 
-drawBoid : Boid -> Svg.Svg msg
+drawBoid : Boid -> Svg.Svg Msg
 drawBoid (Boid boid) =
     Svg.circle
         [ Svg.Attributes.cx (String.fromFloat boid.pos.x)
