@@ -121,13 +121,23 @@ flyToNeighbours neighbours (Boid boid) =
 
     else
         let
-            neighbourDraw =
-                List.foldr vadd { x = 0, y = 0 } (List.map pos neighbours)
-                    |> vscale (1 / toFloat (List.length neighbours))
-                    |> vadd (vscale -1 boid.pos)
-                    |> vscale (1 / 100)
+            visibleNeighbours =
+                List.filter
+                    (\other -> distance (Boid boid) other < 200 && distance (Boid boid) other > 20)
+                    neighbours
         in
-        Boid { boid | force = vadd boid.force neighbourDraw }
+        if List.isEmpty visibleNeighbours then
+            Boid boid
+
+        else
+            visibleNeighbours
+                |> List.foldr
+                    (\(Boid other) acc -> vadd acc other.pos)
+                    { x = 0, y = 0 }
+                |> vscale (1 / toFloat (List.length visibleNeighbours))
+                |> vadd (vscale -1 boid.pos)
+                |> vscale (1 / 100)
+                |> (\flockForce -> Boid { boid | force = vadd boid.force flockForce })
 
 
 keepDistance : List Boid -> Boid -> Boid

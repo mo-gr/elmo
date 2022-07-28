@@ -5312,36 +5312,50 @@ var $author$project$Boid$clampVelocity = F2(
 			}
 		}
 	});
-var $author$project$Boid$pos = function (_v0) {
-	var b = _v0.a;
-	return b.pos;
-};
 var $author$project$Boid$flyToNeighbours = F2(
 	function (neighbours, _v0) {
 		var boid = _v0.a;
 		if ($elm$core$List$isEmpty(neighbours)) {
 			return $author$project$Boid$Boid(boid);
 		} else {
-			var neighbourDraw = A2(
-				$author$project$Boid$vscale,
-				1 / 100,
+			var visibleNeighbours = A2(
+				$elm$core$List$filter,
+				function (other) {
+					return (A2(
+						$author$project$Boid$distance,
+						$author$project$Boid$Boid(boid),
+						other) < 200) && (A2(
+						$author$project$Boid$distance,
+						$author$project$Boid$Boid(boid),
+						other) > 20);
+				},
+				neighbours);
+			return $elm$core$List$isEmpty(visibleNeighbours) ? $author$project$Boid$Boid(boid) : function (flockForce) {
+				return $author$project$Boid$Boid(
+					_Utils_update(
+						boid,
+						{
+							force: A2($author$project$Boid$vadd, boid.force, flockForce)
+						}));
+			}(
 				A2(
-					$author$project$Boid$vadd,
-					A2($author$project$Boid$vscale, -1, boid.pos),
+					$author$project$Boid$vscale,
+					1 / 100,
 					A2(
-						$author$project$Boid$vscale,
-						1 / $elm$core$List$length(neighbours),
-						A3(
-							$elm$core$List$foldr,
-							$author$project$Boid$vadd,
-							{x: 0, y: 0},
-							A2($elm$core$List$map, $author$project$Boid$pos, neighbours)))));
-			return $author$project$Boid$Boid(
-				_Utils_update(
-					boid,
-					{
-						force: A2($author$project$Boid$vadd, boid.force, neighbourDraw)
-					}));
+						$author$project$Boid$vadd,
+						A2($author$project$Boid$vscale, -1, boid.pos),
+						A2(
+							$author$project$Boid$vscale,
+							1 / $elm$core$List$length(visibleNeighbours),
+							A3(
+								$elm$core$List$foldr,
+								F2(
+									function (_v1, acc) {
+										var other = _v1.a;
+										return A2($author$project$Boid$vadd, acc, other.pos);
+									}),
+								{x: 0, y: 0},
+								visibleNeighbours)))));
 		}
 	});
 var $author$project$Boid$keepDistance = F2(
