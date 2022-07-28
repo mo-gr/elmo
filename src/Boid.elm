@@ -84,13 +84,24 @@ calculateForces bs b =
     in
     resetForce b
         |> flyToNeighbours others
+        |> keepDistance others
         |> clampForce 1
+        |> clampVelocity 5
 
 
 clampForce : Float -> Boid -> Boid
 clampForce limit (Boid boid) =
     if vlength boid.force > limit then
         clampForce limit (Boid { boid | force = vscale 0.5 boid.force })
+
+    else
+        Boid boid
+
+
+clampVelocity : Float -> Boid -> Boid
+clampVelocity limit (Boid boid) =
+    if vlength boid.velocity > limit then
+        clampVelocity limit (Boid { boid | velocity = vscale 0.5 boid.velocity })
 
     else
         Boid boid
@@ -103,7 +114,7 @@ resetForce (Boid boid) =
 
 flyToNeighbours : List Boid -> Boid -> Boid
 flyToNeighbours neighbours (Boid boid) =
-    if List.length neighbours < 1 then
+    if List.isEmpty neighbours then
         Boid boid
 
     else
@@ -117,9 +128,27 @@ flyToNeighbours neighbours (Boid boid) =
         Boid { boid | force = vadd boid.force neighbourDraw }
 
 
+keepDistance : List Boid -> Boid -> Boid
+keepDistance neighbours (Boid boid) =
+    if List.isEmpty neighbours then
+        Boid boid
+
+    else
+        neighbours
+            |> List.filter (\other -> distance (Boid boid) other < 15)
+            |> List.foldr (\(Boid other) avoid -> vsub avoid (vsub boid.pos other.pos)) { x = 0, y = 0 }
+            |> vscale (1 / 8)
+            |> (\avoidanceForce -> Boid { boid | force = vadd boid.force avoidanceForce })
+
+
 pos : Boid -> V2
 pos (Boid b) =
     b.pos
+
+
+distance : Boid -> Boid -> Float
+distance (Boid b1) (Boid b2) =
+    vsub b1.pos b2.pos |> vlength
 
 
 updateBoid : Boid -> Boid
@@ -136,6 +165,11 @@ vadd v1 v2 =
     { x = v1.x + v2.x, y = v1.y + v2.y }
 
 
+vsub : V2 -> V2 -> V2
+vsub v1 v2 =
+    vscale -1 v1 |> vadd v2
+
+
 vscale : Float -> V2 -> V2
 vscale n v =
     { x = v.x * n, y = v.y * n }
@@ -148,7 +182,7 @@ vlength { x, y } =
 
 onClickWithCoord : (V2 -> Msg) -> Attribute Msg
 onClickWithCoord makeMessage =
-    Json.Decode.map2 (\x y -> Debug.log "msg" <| makeMessage { x = x, y = y })
+    Json.Decode.map2 (\x y -> makeMessage { x = x, y = y })
         (Json.Decode.field "offsetX" Json.Decode.float)
         (Json.Decode.field "offsetY" Json.Decode.float)
         |> on "click"
